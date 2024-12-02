@@ -18,3 +18,4 @@ sha2 = "0.10.6"
 serde_cbor = "0.11.2"
 serde_bytes = "0.11"
 ed25519-compact = { version = "2", default-features = false }
+log = "0.4"

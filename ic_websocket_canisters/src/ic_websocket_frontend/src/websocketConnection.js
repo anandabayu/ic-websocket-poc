@@ -1,29 +1,32 @@
-import { ic_websocket_backend } from "../../declarations/ic_websocket_backend";
+import {
+  createActor,
+  ic_websocket_backend,
+} from '../../declarations/ic_websocket_backend';
 
 import {
   Cbor,
   // Certificate,
   // HashTree,
-  HttpAgent
+  HttpAgent,
   // lookup_path,
   // reconstruct,
   // compare
-} from "@dfinity/agent";
-import { Principal } from "@dfinity/principal";
-import addNotification from "./utils/addNotification.js";
+} from '@dfinity/agent';
+import { Principal } from '@dfinity/principal';
+import addNotification from './utils/addNotification.js';
 // import { lebDecode } from "@dfinity/candid";
 // import { PipeArrayBuffer } from "@dfinity/candid/lib/cjs/utils/buffer";
 
 import * as ed from '@noble/ed25519';
 
-import validateBody from "./utils/validateBody";
+import validateBody from './utils/validateBody';
 
 export default class websocketConnection {
   constructor(canister_id, gateway_address, network_url, local_test) {
     this.canister_id = canister_id;
     this.next_received_num = 0; // Received signed messages need to come in the correct order, with sequence numbers 0, 1, 2...
     this.instance = new WebSocket(gateway_address); // Gateway address. Here localhost to reproduce the demo.
-    this.instance.binaryType = "arraybuffer";
+    this.instance.binaryType = 'arraybuffer';
     this.bindEvents();
     this.key = ed.utils.randomPrivateKey(); // Generate new key for this websocket connection.
     this.agent = new HttpAgent({ host: network_url });
@@ -62,7 +65,7 @@ export default class websocketConnection {
   }
 
   sendMessage(message) {
-    console.log("Sending to canister.");
+    console.log('Sending to canister.');
     this.instance.send(message);
     this.sequence_num += 1;
   }
@@ -75,10 +78,14 @@ export default class websocketConnection {
   }
 
   async onOpen(event) {
-    console.log("[open] Connection opened");
+    console.log('[open] Connection opened');
     // Put the public key in the canister. Get client_id from the canister.
     const publicKey = await ed.getPublicKey(this.key);
-    let client_id = Number(await ic_websocket_backend.ws_register(publicKey));
+    const actor = createActor('bkyz2-fmaaa-aaaaa-qaaaq-cai');
+    const wsRegistrNumber = await actor.ws_register(publicKey);
+
+    let client_id = Number(wsRegistrNumber);
+
     this.client_id = client_id;
     this.sequence_num = 0;
 
@@ -116,14 +123,16 @@ export default class websocketConnection {
     // Check the sequence number
     let received_num = websocketMsg.sequence_num;
     if (received_num != this.next_received_num) {
-      console.log(`Received message sequence number (${received_num}) does not match next expected value (${this.next_received_num}). Message ignored.`);
+      console.log(
+        `Received message sequence number (${received_num}) does not match next expected value (${this.next_received_num}). Message ignored.`
+      );
       return;
     }
     this.next_received_num += 1;
 
     // Inspect the timestamp
     let time = websocketMsg.timestamp;
-    let delay_s = (Date.now() * (10 ** 6) - time) / (10 ** 9);
+    let delay_s = (Date.now() * 10 ** 6 - time) / 10 ** 9;
     console.log(`(time now) - (message timestamp) = ${delay_s}s`);
 
     // Verify the certificate (canister signature)
@@ -140,7 +149,7 @@ export default class websocketConnection {
     let text = appMsg.text;
     console.log(`[message] Message from canister: ${text}`);
     addNotification(text);
-    this.sendMessage(await this.make_message(text + "-pong"));
+    // this.sendMessage(await this.make_message(text + '-pong'));
   }
 
   onClose(event) {
@@ -149,7 +158,7 @@ export default class websocketConnection {
         `[close] Connection closed, code=${event.code} reason=${event.reason}`
       );
     } else {
-      console.log("[close] Connection died");
+      console.log('[close] Connection died');
     }
   }
 

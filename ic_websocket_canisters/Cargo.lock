@@ -420,6 +420,7 @@ dependencies = [
  "ic-cdk",
  "ic-cdk-macros",
  "ic-certified-map",
+ "log",
  "serde",
  "serde_bytes",
  "serde_cbor",
